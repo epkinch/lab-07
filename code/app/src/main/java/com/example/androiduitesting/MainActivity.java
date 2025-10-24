@@ -1,110 +1,81 @@
 package com.example.androiduitesting;
 
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 
-import androidx.activity.EdgeToEdge;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
-
-import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-
 import java.util.ArrayList;
+import java.util.Arrays;
 
-public class MainActivity extends AppCompatActivity implements MovieDialogListener, MovieDeleteDialogListener {
-    private Button addMovieButton;
-    private ListView movieListView;
-    private FirebaseFirestore db;
-    private CollectionReference moviesRef;
-
-    private ArrayList<Movie> movieArrayList;
-    private ArrayAdapter<Movie> movieArrayAdapter;
+public class MainActivity extends AppCompatActivity {
+    // Declare the variables so that you will be able to reference it later.
+    ListView cityList;
+    EditText newName;
+    LinearLayout nameField;
+    ArrayAdapter<String> cityAdapter;
+    ArrayList<String> dataList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
 
-        db = FirebaseFirestore.getInstance();
-        moviesRef = db.collection("movies");
+        nameField = findViewById(R.id.field_nameEntry);
+        newName  = findViewById(R.id.editText_name);
 
-        moviesRef.addSnapshotListener((value, error) -> {
-            if (error != null){
-                Log.e("Firestore", error.toString());
+        cityList = findViewById(R.id.city_list);
+
+        //String []cities ={"Edmonton", "Vancouver", "Moscow", "Sydney", "Berlin", "Vienna", "Tokyo", "Beijing", "Osaka", "New Delhi"};
+
+        dataList = new ArrayList<>();
+
+        //dataList.addAll(Arrays.asList(cities));
+
+        cityAdapter = new ArrayAdapter<>(this, R.layout.content, dataList);
+
+        cityList.setAdapter(cityAdapter);
+
+        cityList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            public void onItemClick(AdapterView<?> parent, View v, int position, long id) {
+                Intent intent = new Intent(MainActivity.this, ShowActivity.class);
+                Bundle bundle = new Bundle();
+                String city1 = (String) cityList.getItemAtPosition(position);
+                bundle.putString("city", city1);
+                intent.putExtra("bundle", bundle);
+                startActivity(intent);
             }
-            if (value != null){
-                movieArrayList.clear();
-                if (!value.isEmpty()) {
-                    for (QueryDocumentSnapshot snapshot : value) {
-                        snapshot.toObject(Movie.class);
-                        movieArrayList.add(snapshot.toObject(Movie.class));
-                    }
-                }
-                movieArrayAdapter.notifyDataSetChanged();
+        });
+
+        final Button addButton = findViewById(R.id.button_add);
+        addButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                nameField.setVisibility(View.VISIBLE);
             }
         });
 
-        // Set views
-        addMovieButton = findViewById(R.id.buttonAddMovie);
-        movieListView = findViewById(R.id.listviewMovies);
-
-        // create movie array
-        movieArrayList = new ArrayList<>();
-        movieArrayAdapter = new MovieArrayAdapter(this, movieArrayList);
-        movieListView.setAdapter(movieArrayAdapter);
-
-        // set listeners
-        addMovieButton.setOnClickListener(view -> {
-            MovieDialogFragment movieDialogFragment = new MovieDialogFragment();
-            movieDialogFragment.show(getSupportFragmentManager(),"Add Movie");
+        final Button confirmButton = findViewById(R.id.button_confirm);
+        confirmButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                String cityName = newName.getText().toString();
+                cityAdapter.add(cityName);
+                newName.getText().clear();
+                nameField.setVisibility(View.INVISIBLE);
+            }
         });
 
-        movieListView.setOnItemClickListener((adapterView, view, i, l) -> {
-            Movie movie = movieArrayAdapter.getItem(i);
-            MovieDialogFragment movieDialogFragment = MovieDialogFragment.newInstance(movie);
-            movieDialogFragment.show(getSupportFragmentManager(),"Movie Details");
+        final Button deleteButton = findViewById(R.id.button_clear);
+        deleteButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                cityAdapter.clear();
+            }
         });
-
-        movieListView.setOnItemLongClickListener((adapterView, view, i, l) -> {
-            Movie movie = movieArrayAdapter.getItem(i);
-            MovieDeleteDialogFragment movieDeleteDialogFragment = MovieDeleteDialogFragment.newInstance(movie);
-            movieDeleteDialogFragment.show(getSupportFragmentManager(),"Movie Delete");
-            return true;
-        });
-    }
-
-    @Override
-    public void updateMovie(Movie movie, String title, String genre, String year) {
-        movie.setTitle(title);
-        movie.setGenre(genre);
-        movie.setYear(year);
-        DocumentReference docRef = moviesRef.document(movie.getTitle());
-        docRef.set(movie);
-    }
-
-    @Override
-    public void addMovie(Movie movie){
-        DocumentReference docRef = moviesRef.document(movie.getTitle());
-        docRef.set(movie);
-    }
-
-    @Override
-    public void deleteMovie(Movie movie) {
-        DocumentReference docRef = moviesRef.document(movie.getTitle());
-        docRef.delete();
     }
 }
